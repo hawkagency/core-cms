@@ -1,6 +1,6 @@
 {
   "name": "@agency/core-cms",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hawk Agency Core CMS Domain Module for Next.js and Supabase",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
