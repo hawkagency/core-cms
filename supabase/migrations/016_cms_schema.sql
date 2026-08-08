@@ -32,3 +32,12 @@ CREATE POLICY "rls_cms_admin" ON public.cms_landing_settings
   FOR ALL TO service_role
   USING (true)
   WITH CHECK (true);
+
+CREATE POLICY "rls_cms_gym_admin" ON public.cms_landing_settings
+  FOR ALL
+  USING (
+    coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), 'member') = 'gym_admin'
+  )
+  WITH CHECK (
+    coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), 'member') = 'gym_admin'
+  );

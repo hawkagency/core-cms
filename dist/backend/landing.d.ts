@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 export interface BannerConfig {
     isActive: boolean;
     message: string;
-    type: 'avviso' | 'info' | 'urgente';
+    type: 'avviso' | 'info' | 'urgente' | 'promozione';
 }
 export interface Promotion {
     id: string | number;
@@ -18,6 +18,7 @@ export interface FeaturedItems {
     courses: string[];
     memberships: string[];
     staff: string[];
+    recommended_membership?: string;
 }
 export interface CmsLandingSettings {
     id: string;
