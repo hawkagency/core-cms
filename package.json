@@ -1,0 +1,47 @@
+{
+  "name": "@agency/core-cms",
+  "version": "1.0.0",
+  "description": "Hawk Agency Core CMS Domain Module for Next.js and Supabase",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./backend": {
+      "types": "./dist/backend/index.d.ts",
+      "import": "./dist/backend/index.js",
+      "default": "./dist/backend/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "docs",
+    "index.js",
+    "index.d.ts",
+    "backend",
+    "supabase"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "hawk-agency",
+    "cms-core",
+    "supabase",
+    "nextjs"
+  ],
+  "author": "Hawk Agency",
+  "license": "MIT",
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.110.9",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
