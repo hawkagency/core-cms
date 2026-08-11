@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-08-12
+### Aggiunto — `ConfirmProvider` (`@agency/core-cms/ui`)
+Sostituisce `window.confirm()`, e non per estetica. `confirm()` blocca il thread principale, mostra una riga di testo senza formattazione e due pulsanti di sistema che non si possono nemmeno tradurre, e in una web app installata su iOS a volte **non compare affatto**: l'utente tocca "elimina", non succede niente, e riprova. Soprattutto non distingue "salvo le modifiche?" da "elimino per sempre questo piano".
+
+- L'API resta quella a cui il codice è abituato — si attende una risposta booleana — così ogni punto di chiamata cambia di una riga invece di richiedere una riscrittura del flusso.
+- `tone: 'danger'` per le operazioni distruttive e `requireTyping` per quelle irreversibili: obbliga a scrivere una parola, che è l'unico modo per spezzare il click automatico di chi conferma per riflesso. Usato solo dove non si torna indietro, altrimenti diventa un fastidio da superare senza leggere.
+- Esc annulla, il fuoco entra nel dialogo, lo scorrimento della pagina si blocca: cose che `confirm()` faceva e che sarebbe un passo indietro perdere. Solo un click *sullo sfondo* chiude, così un trascinamento partito dentro il dialogo non lo annulla per sbaglio.
+- Stili in linea e `theme` opzionale, come per il consenso cookie: nessuna dipendenza da Tailwind e nessun pacchetto di terze parti aggiunto.
+
 ## [1.3.0] - 2026-08-11
 ### Aggiunto — consenso cookie (`@agency/core-cms/consent`)
 Componenti riusabili da ogni sito cliente, con stili in linea e nessuna dipendenza da Tailwind o da un tema: si adattano passando `theme`, e funzionano identici in un progetto con un impianto grafico diverso.
