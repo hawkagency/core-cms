@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Non rilasciato]
+### Aggiunto — consenso cookie (`@agency/core-cms/consent`)
+Componenti riusabili da ogni sito cliente, con stili in linea e nessuna dipendenza da Tailwind o da un tema: si adattano passando `theme`, e funzionano identici in un progetto con un impianto grafico diverso.
+
+- **`ConsentGate`** è il pezzo che conta. Non monta i figli finché la categoria non è stata accettata, quindi l'iframe di terze parti non esiste nel DOM e al fornitore non parte alcuna richiesta. Un banner che informa mentre la mappa ha già caricato non serve a nulla: i cookie sono già stati depositati. Offre anche un'alternativa che non richiede consenso (`fallbackHref`), così chi rifiuta non resta senza informazione.
+- **`CookieBanner`**: se non si dichiara alcuna categoria facoltativa, non compare affatto. Chiedere il permesso per cose che non si fanno abitua le persone a cliccare "accetta" senza leggere. "Rifiuta" ha lo stesso peso visivo di "Accetta", non è nascosto dietro un secondo click.
+- **`useConsent` / `openConsentPreferences` / `revokeConsent`**: la scelta è revocabile con la stessa facilità con cui è stata data. La decisione è salvata con data e versione dell'informativa; se cambiano le categorie in uso si alza `version` e il consenso viene richiesto di nuovo, perché un sì dato per una mappa non copre l'arrivo di un pixel pubblicitario.
+- Nessun cookie viene scritto: la decisione sta in `localStorage`, quindi anche il meccanismo del consenso non deposita nulla prima del consenso.
+- Predisposte le categorie `statistics` e `marketing` anche dove non servono ancora: aggiungere uno strumento sarà una voce in `categories`, non una riscrittura.
+
+`react` aggiunto ai peer, `jsx` abilitato nel tsconfig: il pacchetto ora può contenere componenti oltre alle funzioni.
+
 ## [1.2.0] - 2026-08-11
 ### Sicurezza
 - **`rls_cms_gym_admin` filtra per tenant** (`cms_0002_tenant_isolation.sql`). Prima il predicato era il solo `role = 'gym_admin'`: un amministratore della palestra A poteva riscrivere banner, promozioni e contenuti della landing page della palestra B. Il controllo ora usa `is_gym_admin()`, che riconosce anche `super_admin` e ha il fallback sulla tabella profiles.

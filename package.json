@@ -14,14 +14,20 @@
       "types": "./dist/backend/index.d.ts",
       "import": "./dist/backend/index.js",
       "default": "./dist/backend/index.js"
+    },
+    "./consent": {
+      "types": "./dist/consent/index.d.ts",
+      "import": "./dist/consent/index.js",
+      "default": "./dist/consent/index.js"
     }
   },
   "files": [
+    "backend",
+    "consent",
     "dist",
     "docs",
-    "index.js",
     "index.d.ts",
-    "backend",
+    "index.js",
     "supabase"
   ],
   "scripts": {
@@ -37,11 +43,13 @@
   "author": "Hawk Agency",
   "license": "MIT",
   "peerDependencies": {
-    "@supabase/supabase-js": "^2.0.0"
+    "@supabase/supabase-js": "^2.0.0",
+    "react": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.112.2",
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "@types/react": "^18.3.0"
   }
 }
