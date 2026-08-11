@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Non rilasciato]
+## [1.3.0] - 2026-08-11
 ### Aggiunto — consenso cookie (`@agency/core-cms/consent`)
 Componenti riusabili da ogni sito cliente, con stili in linea e nessuna dipendenza da Tailwind o da un tema: si adattano passando `theme`, e funzionano identici in un progetto con un impianto grafico diverso.
 
