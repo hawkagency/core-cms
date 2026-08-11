@@ -1,6 +1,6 @@
 {
   "name": "@agency/core-cms",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Hawk Agency Core CMS Domain Module for Next.js and Supabase",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -40,7 +40,7 @@
     "@supabase/supabase-js": "^2.0.0"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.110.9",
+    "@supabase/supabase-js": "2.112.2",
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
   }
