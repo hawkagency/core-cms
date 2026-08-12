@@ -5,7 +5,7 @@ exports.updateLandingSettings = updateLandingSettings;
 const DEFAULT_BANNER = { isActive: false, message: '', type: 'info' };
 const DEFAULT_PROMOS = [];
 const DEFAULT_FEATURED = { courses: [], memberships: [], staff: [] };
-async function getLandingSettings(supabase, tenantId = 'mythos') {
+async function getLandingSettings(supabase, tenantId) {
     let { data, error } = await supabase
         .from('cms_landing_settings')
         .select('*')

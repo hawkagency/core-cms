@@ -29,5 +29,5 @@ export interface CmsLandingSettings {
     created_at: string;
     updated_at: string;
 }
-export declare function getLandingSettings(supabase: SupabaseClient, tenantId?: string): Promise<CmsLandingSettings>;
+export declare function getLandingSettings(supabase: SupabaseClient, tenantId: string): Promise<CmsLandingSettings>;
 export declare function updateLandingSettings(supabase: SupabaseClient, tenantId: string, payload: Partial<Omit<CmsLandingSettings, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>>): Promise<CmsLandingSettings>;

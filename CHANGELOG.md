@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-08-12
+### Cambiato — modifica non retrocompatibile
+- `getLandingSettings(supabase, tenantId)`: `tenantId` non ha più `'mythos'` come valore predefinito. Chi lo ometteva leggeva la landing del primo cliente credendo di leggere la propria.
+
 ## [1.5.0] - 2026-08-12
 ### Aggiunto — `usePrompt()`
 Sostituisce `window.prompt()`, che ha gli stessi difetti di `confirm()` e in più non permette testo su più righe: i motivi di rifiuto di un certificato medico finivano in un campo a riga singola senza etichetta né spiegazione.

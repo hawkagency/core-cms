@@ -40,7 +40,7 @@ const DEFAULT_FEATURED: FeaturedItems = { courses: [], memberships: [], staff: [
 
 export async function getLandingSettings(
   supabase: SupabaseClient,
-  tenantId: string = 'mythos'
+  tenantId: string
 ): Promise<CmsLandingSettings> {
   let { data, error } = await supabase
     .from('cms_landing_settings')
