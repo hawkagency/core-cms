@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-08-12
+### Corretto
+- La chiave di export era `/ui` invece di `./ui`, quindi `@agency/core-cms/ui` non si risolveva e la 1.4.0 pubblicava un modulo irraggiungibile. Causa: `npm pkg set` interpreta il punto come separatore di percorso nella chiave.
+
 ## [1.4.0] - 2026-08-12
 ### Aggiunto — `ConfirmProvider` (`@agency/core-cms/ui`)
 Sostituisce `window.confirm()`, e non per estetica. `confirm()` blocca il thread principale, mostra una riga di testo senza formattazione e due pulsanti di sistema che non si possono nemmeno tradurre, e in una web app installata su iOS a volte **non compare affatto**: l'utente tocca "elimina", non succede niente, e riprova. Soprattutto non distingue "salvo le modifiche?" da "elimino per sempre questo piano".
