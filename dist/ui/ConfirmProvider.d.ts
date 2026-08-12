@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import type { ConfirmRequest, DialogTheme } from './types';
+import type { ConfirmRequest, PromptRequest, DialogTheme } from './types';
 export declare function useConfirm(): (req: ConfirmRequest) => Promise<boolean>;
+export declare function usePrompt(): (req: PromptRequest) => Promise<string | null>;
 export interface ConfirmProviderProps {
     children: ReactNode;
     theme?: Partial<DialogTheme>;

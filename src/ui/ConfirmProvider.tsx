@@ -2,32 +2,48 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { ConfirmRequest, DialogTheme } from './types';
+import type { ConfirmRequest, PromptRequest, DialogTheme } from './types';
 
 /**
- * Sostituisce `window.confirm()`.
+ * Sostituisce `window.confirm()` e `window.prompt()`.
  *
- * Non è una questione di estetica. `confirm()` blocca il thread principale,
- * non si può tradurre né spiegare (mostra solo una riga di testo e due
- * pulsanti di sistema), e in una web app installata su iOS a volte non compare
+ * Non è una questione di estetica. Bloccano il thread principale, mostrano una
+ * riga di testo senza formattazione e pulsanti di sistema che non si possono
+ * nemmeno tradurre, e in una web app installata su iOS a volte non compaiono
  * affatto: l'utente tocca "elimina", non succede niente, e riprova. Soprattutto
- * non distingue "salvo le modifiche?" da "elimino per sempre questo piano".
+ * non distinguono "salvo le modifiche?" da "elimino per sempre questo piano".
  *
- * L'API resta però quella a cui il codice esistente è abituato — si attende
- * una risposta booleana — così la sostituzione è una riga per punto di
- * chiamata e non una riscrittura del flusso.
+ * L'API resta però quella a cui il codice esistente è abituato — si attende una
+ * risposta, booleana o testuale — così ogni punto di chiamata cambia di una
+ * riga invece di richiedere una riscrittura del flusso.
  */
 
-type Risolutore = (ok: boolean) => void;
+type Richiesta =
+  | ({ tipo: 'confirm' } & ConfirmRequest)
+  | ({ tipo: 'prompt' } & PromptRequest);
 
-const ConfirmContext = createContext<((req: ConfirmRequest) => Promise<boolean>) | null>(null);
+interface Api {
+  confirm: (req: ConfirmRequest) => Promise<boolean>;
+  /** Restituisce il testo inserito, oppure `null` se si annulla. */
+  prompt: (req: PromptRequest) => Promise<string | null>;
+}
 
-export function useConfirm() {
+const ConfirmContext = createContext<Api | null>(null);
+
+function useApi(): Api {
   const ctx = useContext(ConfirmContext);
   if (!ctx) {
-    throw new Error('useConfirm richiede <ConfirmProvider> più in alto nell\'albero.');
+    throw new Error('useConfirm/usePrompt richiedono <ConfirmProvider> più in alto nell\'albero.');
   }
   return ctx;
+}
+
+export function useConfirm() {
+  return useApi().confirm;
+}
+
+export function usePrompt() {
+  return useApi().prompt;
 }
 
 export interface ConfirmProviderProps {
@@ -36,45 +52,62 @@ export interface ConfirmProviderProps {
 }
 
 export function ConfirmProvider({ children, theme }: ConfirmProviderProps) {
-  const [richiesta, setRichiesta] = useState<ConfirmRequest | null>(null);
-  const [digitato, setDigitato] = useState('');
-  const risolutore = useRef<Risolutore | null>(null);
-  const primoElemento = useRef<HTMLButtonElement | HTMLInputElement | null>(null);
+  const [richiesta, setRichiesta] = useState<Richiesta | null>(null);
+  const [testo, setTesto] = useState('');
+  const risolutore = useRef<((esito: boolean | string | null) => void) | null>(null);
+  const campo = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const pulsanteAnnulla = useRef<HTMLButtonElement | null>(null);
 
-  const confirm = useCallback((req: ConfirmRequest) => {
-    setDigitato('');
+  const apri = useCallback((req: Richiesta, iniziale: string) => {
+    setTesto(iniziale);
     setRichiesta(req);
-    return new Promise<boolean>((resolve) => {
+    return new Promise<boolean | string | null>((resolve) => {
       risolutore.current = resolve;
     });
   }, []);
 
-  const chiudi = useCallback((ok: boolean) => {
-    risolutore.current?.(ok);
+  const confirm = useCallback(
+    (req: ConfirmRequest) => apri({ tipo: 'confirm', ...req }, '') as Promise<boolean>,
+    [apri]
+  );
+
+  const prompt = useCallback(
+    (req: PromptRequest) =>
+      apri({ tipo: 'prompt', ...req }, req.initialValue ?? '') as Promise<string | null>,
+    [apri]
+  );
+
+  const chiudi = useCallback((esito: boolean | string | null) => {
+    risolutore.current?.(esito);
     risolutore.current = null;
     setRichiesta(null);
-    setDigitato('');
+    setTesto('');
   }, []);
 
-  // Esc annulla. Senza, l'unico modo per uscire sarebbe centrare un pulsante:
-  // `confirm()` questo lo faceva, e toglierlo sarebbe un passo indietro.
+  const annulla = useCallback(() => {
+    // Un `confirm` annullato vale `false`, un `prompt` annullato vale `null`:
+    // è la distinzione che permette a chi chiama di non trattare "ho scritto
+    // una stringa vuota" come "ho rinunciato".
+    chiudi(richiesta?.tipo === 'prompt' ? null : false);
+  }, [chiudi, richiesta]);
+
   useEffect(() => {
     if (!richiesta) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') chiudi(false);
+      if (e.key === 'Escape') annulla();
     };
     window.addEventListener('keydown', onKey);
-    // Il fuoco parte dentro il dialogo, altrimenti chi naviga da tastiera o con
-    // uno screen reader resta sulla pagina sottostante e non sa che è stato
+    // Il fuoco entra nel dialogo, altrimenti chi naviga da tastiera o con uno
+    // screen reader resta sulla pagina sottostante e non sa che gli è stato
     // chiesto qualcosa.
-    primoElemento.current?.focus();
+    (campo.current ?? pulsanteAnnulla.current)?.focus();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = overflow;
     };
-  }, [richiesta, chiudi]);
+  }, [richiesta, annulla]);
 
   const c: DialogTheme = {
     background: '#ffffff',
@@ -91,11 +124,33 @@ export function ConfirmProvider({ children, theme }: ConfirmProviderProps) {
   };
 
   const pericoloso = richiesta?.tone === 'danger';
-  const parola = richiesta?.requireTyping;
-  const bloccato = !!parola && digitato.trim().toLowerCase() !== parola.trim().toLowerCase();
+  const parola = richiesta?.tipo === 'confirm' ? richiesta.requireTyping : undefined;
+  const obbligatorio = richiesta?.tipo === 'prompt' ? richiesta.required !== false : false;
+
+  const bloccato = parola
+    ? testo.trim().toLowerCase() !== parola.trim().toLowerCase()
+    : obbligatorio && testo.trim().length === 0;
+
+  const conferma = () => {
+    if (bloccato) return;
+    chiudi(richiesta?.tipo === 'prompt' ? testo.trim() : true);
+  };
+
+  const stileCampo = {
+    width: '100%',
+    marginTop: '6px',
+    padding: '10px 12px',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    borderRadius: '10px',
+    border: `1px solid ${c.border}`,
+    background: '#fff',
+    color: c.text,
+    boxSizing: 'border-box' as const,
+  };
 
   return (
-    <ConfirmContext.Provider value={confirm}>
+    <ConfirmContext.Provider value={{ confirm, prompt }}>
       {children}
       {richiesta && (
         <div
@@ -103,9 +158,9 @@ export function ConfirmProvider({ children, theme }: ConfirmProviderProps) {
           aria-modal="true"
           aria-labelledby="hawk-confirm-title"
           onMouseDown={(e) => {
-            // Solo un click sullo sfondo annulla: un trascinamento partito
-            // dentro il dialogo non deve chiuderlo per sbaglio.
-            if (e.target === e.currentTarget) chiudi(false);
+            // Solo un click iniziato sullo sfondo annulla: un trascinamento
+            // partito dentro il dialogo non deve chiuderlo per sbaglio.
+            if (e.target === e.currentTarget) annulla();
           }}
           style={{
             position: 'fixed',
@@ -118,7 +173,11 @@ export function ConfirmProvider({ children, theme }: ConfirmProviderProps) {
             padding: '20px',
           }}
         >
-          <div
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              conferma();
+            }}
             style={{
               width: '100%',
               maxWidth: '440px',
@@ -140,24 +199,40 @@ export function ConfirmProvider({ children, theme }: ConfirmProviderProps) {
               </p>
             )}
 
+            {richiesta.tipo === 'prompt' && (
+              <label style={{ display: 'block', marginTop: '18px', fontSize: '13px', color: c.muted }}>
+                {richiesta.label || 'Motivo'}
+                {richiesta.multiline ? (
+                  <textarea
+                    ref={(el) => { campo.current = el; }}
+                    value={testo}
+                    onChange={(e) => setTesto(e.target.value)}
+                    placeholder={richiesta.placeholder}
+                    rows={3}
+                    style={{ ...stileCampo, resize: 'vertical' }}
+                  />
+                ) : (
+                  <input
+                    ref={(el) => { campo.current = el; }}
+                    value={testo}
+                    onChange={(e) => setTesto(e.target.value)}
+                    placeholder={richiesta.placeholder}
+                    autoComplete="off"
+                    style={stileCampo}
+                  />
+                )}
+              </label>
+            )}
+
             {parola && (
               <label style={{ display: 'block', marginTop: '18px', fontSize: '13px', color: c.muted }}>
                 Per procedere scrivi <strong style={{ color: c.text }}>{parola}</strong>
                 <input
-                  ref={(el) => { if (el) primoElemento.current = el; }}
-                  value={digitato}
-                  onChange={(e) => setDigitato(e.target.value)}
+                  ref={(el) => { campo.current = el; }}
+                  value={testo}
+                  onChange={(e) => setTesto(e.target.value)}
                   autoComplete="off"
-                  style={{
-                    width: '100%',
-                    marginTop: '6px',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    borderRadius: '10px',
-                    border: `1px solid ${c.border}`,
-                    background: '#fff',
-                    color: c.text,
-                  }}
+                  style={stileCampo}
                 />
               </label>
             )}
@@ -165,14 +240,15 @@ export function ConfirmProvider({ children, theme }: ConfirmProviderProps) {
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '22px', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                ref={(el) => { if (el && !parola) primoElemento.current = el; }}
-                onClick={() => chiudi(false)}
+                ref={pulsanteAnnulla}
+                onClick={annulla}
                 style={{
                   padding: '10px 18px',
                   borderRadius: '10px',
                   fontSize: '14px',
                   fontWeight: 700,
                   cursor: 'pointer',
+                  fontFamily: 'inherit',
                   border: `1px solid ${c.border}`,
                   background: 'transparent',
                   color: c.text,
@@ -181,14 +257,14 @@ export function ConfirmProvider({ children, theme }: ConfirmProviderProps) {
                 {richiesta.cancelLabel || 'Annulla'}
               </button>
               <button
-                type="button"
-                onClick={() => chiudi(true)}
+                type="submit"
                 disabled={bloccato}
                 style={{
                   padding: '10px 18px',
                   borderRadius: '10px',
                   fontSize: '14px',
                   fontWeight: 800,
+                  fontFamily: 'inherit',
                   cursor: bloccato ? 'not-allowed' : 'pointer',
                   opacity: bloccato ? 0.45 : 1,
                   border: `1px solid ${pericoloso ? c.danger : c.accent}`,
@@ -199,7 +275,7 @@ export function ConfirmProvider({ children, theme }: ConfirmProviderProps) {
                 {richiesta.confirmLabel || 'Conferma'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </ConfirmContext.Provider>

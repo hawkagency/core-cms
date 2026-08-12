@@ -2,56 +2,70 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useConfirm = useConfirm;
+exports.usePrompt = usePrompt;
 exports.ConfirmProvider = ConfirmProvider;
 const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
 const ConfirmContext = (0, react_1.createContext)(null);
-function useConfirm() {
+function useApi() {
     const ctx = (0, react_1.useContext)(ConfirmContext);
     if (!ctx) {
-        throw new Error('useConfirm richiede <ConfirmProvider> più in alto nell\'albero.');
+        throw new Error('useConfirm/usePrompt richiedono <ConfirmProvider> più in alto nell\'albero.');
     }
     return ctx;
 }
+function useConfirm() {
+    return useApi().confirm;
+}
+function usePrompt() {
+    return useApi().prompt;
+}
 function ConfirmProvider({ children, theme }) {
     const [richiesta, setRichiesta] = (0, react_1.useState)(null);
-    const [digitato, setDigitato] = (0, react_1.useState)('');
+    const [testo, setTesto] = (0, react_1.useState)('');
     const risolutore = (0, react_1.useRef)(null);
-    const primoElemento = (0, react_1.useRef)(null);
-    const confirm = (0, react_1.useCallback)((req) => {
-        setDigitato('');
+    const campo = (0, react_1.useRef)(null);
+    const pulsanteAnnulla = (0, react_1.useRef)(null);
+    const apri = (0, react_1.useCallback)((req, iniziale) => {
+        setTesto(iniziale);
         setRichiesta(req);
         return new Promise((resolve) => {
             risolutore.current = resolve;
         });
     }, []);
-    const chiudi = (0, react_1.useCallback)((ok) => {
-        risolutore.current?.(ok);
+    const confirm = (0, react_1.useCallback)((req) => apri({ tipo: 'confirm', ...req }, ''), [apri]);
+    const prompt = (0, react_1.useCallback)((req) => apri({ tipo: 'prompt', ...req }, req.initialValue ?? ''), [apri]);
+    const chiudi = (0, react_1.useCallback)((esito) => {
+        risolutore.current?.(esito);
         risolutore.current = null;
         setRichiesta(null);
-        setDigitato('');
+        setTesto('');
     }, []);
-    // Esc annulla. Senza, l'unico modo per uscire sarebbe centrare un pulsante:
-    // `confirm()` questo lo faceva, e toglierlo sarebbe un passo indietro.
+    const annulla = (0, react_1.useCallback)(() => {
+        // Un `confirm` annullato vale `false`, un `prompt` annullato vale `null`:
+        // è la distinzione che permette a chi chiama di non trattare "ho scritto
+        // una stringa vuota" come "ho rinunciato".
+        chiudi(richiesta?.tipo === 'prompt' ? null : false);
+    }, [chiudi, richiesta]);
     (0, react_1.useEffect)(() => {
         if (!richiesta)
             return;
         const onKey = (e) => {
             if (e.key === 'Escape')
-                chiudi(false);
+                annulla();
         };
         window.addEventListener('keydown', onKey);
-        // Il fuoco parte dentro il dialogo, altrimenti chi naviga da tastiera o con
-        // uno screen reader resta sulla pagina sottostante e non sa che è stato
+        // Il fuoco entra nel dialogo, altrimenti chi naviga da tastiera o con uno
+        // screen reader resta sulla pagina sottostante e non sa che gli è stato
         // chiesto qualcosa.
-        primoElemento.current?.focus();
+        (campo.current ?? pulsanteAnnulla.current)?.focus();
         const overflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         return () => {
             window.removeEventListener('keydown', onKey);
             document.body.style.overflow = overflow;
         };
-    }, [richiesta, chiudi]);
+    }, [richiesta, annulla]);
     const c = {
         background: '#ffffff',
         text: '#111827',
@@ -66,13 +80,33 @@ function ConfirmProvider({ children, theme }) {
         ...theme,
     };
     const pericoloso = richiesta?.tone === 'danger';
-    const parola = richiesta?.requireTyping;
-    const bloccato = !!parola && digitato.trim().toLowerCase() !== parola.trim().toLowerCase();
-    return ((0, jsx_runtime_1.jsxs)(ConfirmContext.Provider, { value: confirm, children: [children, richiesta && ((0, jsx_runtime_1.jsx)("div", { role: "dialog", "aria-modal": "true", "aria-labelledby": "hawk-confirm-title", onMouseDown: (e) => {
-                    // Solo un click sullo sfondo annulla: un trascinamento partito
-                    // dentro il dialogo non deve chiuderlo per sbaglio.
+    const parola = richiesta?.tipo === 'confirm' ? richiesta.requireTyping : undefined;
+    const obbligatorio = richiesta?.tipo === 'prompt' ? richiesta.required !== false : false;
+    const bloccato = parola
+        ? testo.trim().toLowerCase() !== parola.trim().toLowerCase()
+        : obbligatorio && testo.trim().length === 0;
+    const conferma = () => {
+        if (bloccato)
+            return;
+        chiudi(richiesta?.tipo === 'prompt' ? testo.trim() : true);
+    };
+    const stileCampo = {
+        width: '100%',
+        marginTop: '6px',
+        padding: '10px 12px',
+        fontSize: '14px',
+        fontFamily: 'inherit',
+        borderRadius: '10px',
+        border: `1px solid ${c.border}`,
+        background: '#fff',
+        color: c.text,
+        boxSizing: 'border-box',
+    };
+    return ((0, jsx_runtime_1.jsxs)(ConfirmContext.Provider, { value: { confirm, prompt }, children: [children, richiesta && ((0, jsx_runtime_1.jsx)("div", { role: "dialog", "aria-modal": "true", "aria-labelledby": "hawk-confirm-title", onMouseDown: (e) => {
+                    // Solo un click iniziato sullo sfondo annulla: un trascinamento
+                    // partito dentro il dialogo non deve chiuderlo per sbaglio.
                     if (e.target === e.currentTarget)
-                        chiudi(false);
+                        annulla();
                 }, style: {
                     position: 'fixed',
                     inset: 0,
@@ -82,7 +116,10 @@ function ConfirmProvider({ children, theme }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: '20px',
-                }, children: (0, jsx_runtime_1.jsxs)("div", { style: {
+                }, children: (0, jsx_runtime_1.jsxs)("form", { onSubmit: (e) => {
+                        e.preventDefault();
+                        conferma();
+                    }, style: {
                         width: '100%',
                         maxWidth: '440px',
                         background: c.background,
@@ -91,31 +128,22 @@ function ConfirmProvider({ children, theme }) {
                         padding: '26px',
                         boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
                         fontFamily: 'inherit',
-                    }, children: [(0, jsx_runtime_1.jsx)("h2", { id: "hawk-confirm-title", style: { margin: 0, fontSize: '18px', fontWeight: 800, lineHeight: 1.3 }, children: richiesta.title }), richiesta.description && ((0, jsx_runtime_1.jsx)("p", { style: { margin: '10px 0 0', fontSize: '14px', lineHeight: 1.6, color: c.muted }, children: richiesta.description })), parola && ((0, jsx_runtime_1.jsxs)("label", { style: { display: 'block', marginTop: '18px', fontSize: '13px', color: c.muted }, children: ["Per procedere scrivi ", (0, jsx_runtime_1.jsx)("strong", { style: { color: c.text }, children: parola }), (0, jsx_runtime_1.jsx)("input", { ref: (el) => { if (el)
-                                        primoElemento.current = el; }, value: digitato, onChange: (e) => setDigitato(e.target.value), autoComplete: "off", style: {
-                                        width: '100%',
-                                        marginTop: '6px',
-                                        padding: '10px 12px',
-                                        fontSize: '14px',
-                                        borderRadius: '10px',
-                                        border: `1px solid ${c.border}`,
-                                        background: '#fff',
-                                        color: c.text,
-                                    } })] })), (0, jsx_runtime_1.jsxs)("div", { style: { display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '22px', flexWrap: 'wrap' }, children: [(0, jsx_runtime_1.jsx)("button", { type: "button", ref: (el) => { if (el && !parola)
-                                        primoElemento.current = el; }, onClick: () => chiudi(false), style: {
+                    }, children: [(0, jsx_runtime_1.jsx)("h2", { id: "hawk-confirm-title", style: { margin: 0, fontSize: '18px', fontWeight: 800, lineHeight: 1.3 }, children: richiesta.title }), richiesta.description && ((0, jsx_runtime_1.jsx)("p", { style: { margin: '10px 0 0', fontSize: '14px', lineHeight: 1.6, color: c.muted }, children: richiesta.description })), richiesta.tipo === 'prompt' && ((0, jsx_runtime_1.jsxs)("label", { style: { display: 'block', marginTop: '18px', fontSize: '13px', color: c.muted }, children: [richiesta.label || 'Motivo', richiesta.multiline ? ((0, jsx_runtime_1.jsx)("textarea", { ref: (el) => { campo.current = el; }, value: testo, onChange: (e) => setTesto(e.target.value), placeholder: richiesta.placeholder, rows: 3, style: { ...stileCampo, resize: 'vertical' } })) : ((0, jsx_runtime_1.jsx)("input", { ref: (el) => { campo.current = el; }, value: testo, onChange: (e) => setTesto(e.target.value), placeholder: richiesta.placeholder, autoComplete: "off", style: stileCampo }))] })), parola && ((0, jsx_runtime_1.jsxs)("label", { style: { display: 'block', marginTop: '18px', fontSize: '13px', color: c.muted }, children: ["Per procedere scrivi ", (0, jsx_runtime_1.jsx)("strong", { style: { color: c.text }, children: parola }), (0, jsx_runtime_1.jsx)("input", { ref: (el) => { campo.current = el; }, value: testo, onChange: (e) => setTesto(e.target.value), autoComplete: "off", style: stileCampo })] })), (0, jsx_runtime_1.jsxs)("div", { style: { display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '22px', flexWrap: 'wrap' }, children: [(0, jsx_runtime_1.jsx)("button", { type: "button", ref: pulsanteAnnulla, onClick: annulla, style: {
                                         padding: '10px 18px',
                                         borderRadius: '10px',
                                         fontSize: '14px',
                                         fontWeight: 700,
                                         cursor: 'pointer',
+                                        fontFamily: 'inherit',
                                         border: `1px solid ${c.border}`,
                                         background: 'transparent',
                                         color: c.text,
-                                    }, children: richiesta.cancelLabel || 'Annulla' }), (0, jsx_runtime_1.jsx)("button", { type: "button", onClick: () => chiudi(true), disabled: bloccato, style: {
+                                    }, children: richiesta.cancelLabel || 'Annulla' }), (0, jsx_runtime_1.jsx)("button", { type: "submit", disabled: bloccato, style: {
                                         padding: '10px 18px',
                                         borderRadius: '10px',
                                         fontSize: '14px',
                                         fontWeight: 800,
+                                        fontFamily: 'inherit',
                                         cursor: bloccato ? 'not-allowed' : 'pointer',
                                         opacity: bloccato ? 0.45 : 1,
                                         border: `1px solid ${pericoloso ? c.danger : c.accent}`,

@@ -28,3 +28,17 @@ export interface ConfirmRequest {
      */
     requireTyping?: string;
 }
+export interface PromptRequest {
+    title: string;
+    description?: string;
+    label?: string;
+    placeholder?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    tone?: ConfirmTone;
+    /** Testo su più righe: per i motivi di rifiuto è quasi sempre quello che serve. */
+    multiline?: boolean;
+    /** Se true, non si può confermare a campo vuoto. Predefinito: true. */
+    required?: boolean;
+    initialValue?: string;
+}

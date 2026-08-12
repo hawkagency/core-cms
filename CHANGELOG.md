@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-08-12
+### Aggiunto — `usePrompt()`
+Sostituisce `window.prompt()`, che ha gli stessi difetti di `confirm()` e in più non permette testo su più righe: i motivi di rifiuto di un certificato medico finivano in un campo a riga singola senza etichetta né spiegazione.
+
+- Un `prompt` annullato restituisce `null`, un `confirm` annullato `false`: la distinzione serve a non confondere "ho scritto una stringa vuota" con "ho rinunciato".
+- `required` predefinito a vero, perché un motivo vuoto salvato in un registro è peggio di nessun motivo. `multiline` per i testi lunghi.
+- Il dialogo è un `<form>`: Invio conferma, come ci si aspetta da un campo di testo.
+
 ## [1.4.1] - 2026-08-12
 ### Corretto
 - La chiave di export era `/ui` invece di `./ui`, quindi `@agency/core-cms/ui` non si risolveva e la 1.4.0 pubblicava un modulo irraggiungibile. Causa: `npm pkg set` interpreta il punto come separatore di percorso nella chiave.

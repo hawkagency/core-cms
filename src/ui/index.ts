@@ -1,3 +1,3 @@
-export { ConfirmProvider, useConfirm } from './ConfirmProvider';
+export { ConfirmProvider, useConfirm, usePrompt } from './ConfirmProvider';
 export type { ConfirmProviderProps } from './ConfirmProvider';
-export type { ConfirmRequest, ConfirmTone, DialogTheme } from './types';
+export type { ConfirmRequest, PromptRequest, ConfirmTone, DialogTheme } from './types';
